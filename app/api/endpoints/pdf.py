@@ -15,4 +15,4 @@ async def upload_pdf(file: UploadFile = File(...)):
         return {"pdf_id": pdf_id}
     except Exception as e:
         logger.error(f"Error processing PDF: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail="Error processing PDF")
+        raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
