@@ -8,8 +8,9 @@ pydantic_settings==2.5.2
 pytest==7.4.2
 httpx==0.25.0
 langchain==0.0.329
-langchain-google-genai==2.0.0
+langchain-google-genai==0.0.9
 llama_index==0.11.16
+llama-index-embeddings-langchain==0.2.1
 reportlab==4.0.4
 SQLAlchemy==2.0.23
 faiss-cpu==1.7.4
