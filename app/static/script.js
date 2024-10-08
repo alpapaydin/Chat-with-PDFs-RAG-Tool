@@ -7,7 +7,6 @@ window.onload = function() {
     document.getElementById('register-button').addEventListener('click', register);
     document.getElementById('logout-button').addEventListener('click', logout);
     document.getElementById('upload-button').addEventListener('click', uploadPDFs);
-    document.getElementById('start-new-chat-button').addEventListener('click', startNewChat);
 };
 
 async function checkSession() {
@@ -369,3 +368,14 @@ function formatMessage(message) {
     }
     return formattedMessage;
 }
+
+const userMessageInput = document.getElementById('user-message');
+const sendButton = document.getElementById('send-button');
+userMessageInput.addEventListener('keydown', function(event) {
+    if (event.key === 'Enter') {
+        if (!event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    }
+});

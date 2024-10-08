@@ -37,8 +37,4 @@ coverage.xml
 ._*
 .Spotlight-V100
 .Trashes
-ehthumbs.db
-Thumbs.db
-app.db
-TEST.db
 *.db

@@ -28,6 +28,10 @@ app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 async def read_root():
     return FileResponse(os.path.join(static_dir, "index.html"))
 
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(os.path.join(static_dir, "favicon.ico"))
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
