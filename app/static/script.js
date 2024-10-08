@@ -18,23 +18,39 @@ async function loadExistingChats() {
 }
 
 async function uploadPDFs() {
+    const uploadButton = document.getElementById('upload-button');
+    uploadButton.disabled = true;
+    
     const fileInput = document.getElementById('pdf-files');
     const files = fileInput.files;
     if (files.length === 0) {
         alert('Please select at least one PDF file');
+        uploadButton.disabled = false;
         return;
     }
 
+    let successfulUploads = 0;
     for (let i = 0; i < files.length; i++) {
-        await uploadSinglePDF(files[i]);
+        try {
+            await uploadSinglePDF(files[i]);
+            successfulUploads++;
+        } catch (error) {
+            console.error('Error uploading file:', error);
+            alert(`Error uploading ${files[i].name}: ${error.message}`);
+        }
     }
 
-    document.getElementById('pdf-upload').style.display = 'none';
-    document.getElementById('chat-interface').style.display = 'block';
-    document.getElementById('current-chat-id').textContent = currentChatId;
-    
-    loadChatPDFs(currentChatId);
-    addMessage('System', 'PDFs uploaded successfully. You can now ask questions about them.');
+    if (successfulUploads > 0) {
+        document.getElementById('pdf-upload').style.display = 'none';
+        document.getElementById('chat-interface').style.display = 'block';
+        document.getElementById('current-chat-id').textContent = currentChatId;
+        loadChatPDFs(currentChatId);
+        addMessage('System', `${successfulUploads} PDF(s) uploaded successfully. You can now ask questions about them.`);
+    } else {
+        alert('No PDFs were successfully uploaded.');
+    }
+
+    uploadButton.disabled = false;
 }
 
 async function uploadSinglePDF(file, existingChatId = null) {
@@ -44,24 +60,19 @@ async function uploadSinglePDF(file, existingChatId = null) {
         formData.append('chat_id', existingChatId);
     }
 
-    try {
-        const response = await fetch('/v1/pdf', {
-            method: 'POST',
-            body: formData
-        });
+    const response = await fetch('/v1/pdf', {
+        method: 'POST',
+        body: formData
+    });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'PDF upload failed');
-        }
-
-        const data = await response.json();
-        currentChatId = data.chat_id;
-        return data;
-    } catch (error) {
-        console.error('Error:', error);
-        alert('An error occurred while uploading the PDF: ' + error.message);
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'PDF upload failed');
     }
+
+    const data = await response.json();
+    currentChatId = data.chat_id;
+    return data;
 }
 
 async function loadChat(chatId) {
@@ -70,7 +81,7 @@ async function loadChat(chatId) {
     document.getElementById('chat-interface').style.display = 'block';
     document.getElementById('current-chat-id').textContent = currentChatId;
     document.getElementById('chat-messages').innerHTML = '';
-    loadChatPDFs(currentChatId);
+    await loadChatPDFs(currentChatId);
     addMessage('System', 'Chat loaded. You can now ask questions about the PDFs in this chat.');
 }
 
@@ -91,29 +102,37 @@ async function loadChatPDFs(chatId) {
 }
 
 async function addPDFToChat() {
+    const addButton = document.getElementById('add-pdf-button');
+    addButton.disabled = true;
+    
     const fileInput = document.getElementById('additional-pdf');
     const file = fileInput.files[0];
     if (!file) {
         alert('Please select a PDF file');
+        addButton.disabled = false;
         return;
     }
 
     try {
-        const data = await uploadSinglePDF(file, currentChatId);
-        loadChatPDFs(currentChatId);
+        await uploadSinglePDF(file, currentChatId);
+        await loadChatPDFs(currentChatId);
         addMessage('System', 'Additional PDF uploaded successfully.');
     } catch (error) {
         console.error('Error:', error);
         alert('An error occurred while uploading the additional PDF: ' + error.message);
     }
+
+    addButton.disabled = false;
 }
 
 async function sendMessage() {
+    const sendButton = document.getElementById('send-button');
     const userMessageInput = document.getElementById('user-message');
     const userMessage = userMessageInput.value.trim();
     
     if (!userMessage) return;
     
+    sendButton.disabled = true;
     addMessage('User', userMessage);
     userMessageInput.value = '';
 
@@ -143,6 +162,8 @@ async function sendMessage() {
         console.error('Error:', error);
         addMessage('System', 'An error occurred while processing your message');
     }
+
+    sendButton.disabled = false;
 }
 
 function addMessage(sender, message, isUpdate = false) {

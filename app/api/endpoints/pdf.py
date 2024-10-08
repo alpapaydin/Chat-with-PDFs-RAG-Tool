@@ -2,8 +2,12 @@ from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
 from typing import Optional
 from app.services.pdf_processor import process_pdf
 from app.core.logging import logger
+from app.core.config import settings
 
 router = APIRouter()
+
+# Set the maximum file size (in bytes)
+MAX_FILE_SIZE = settings.FILE_SIZE_MB * 1024 * 1024
 
 @router.post("/pdf")
 async def upload_pdfs(
@@ -11,7 +15,12 @@ async def upload_pdfs(
     file: UploadFile = File(...),
     chat_id: Optional[str] = Form(None)
 ):
-    form = await request.form()
+    # Check file size
+    file_size = await file.read()
+    await file.seek(0)  # Reset file pointer to the beginning
+    if len(file_size) > MAX_FILE_SIZE:
+        raise HTTPException(status_code=413, detail=f"File size exceeds the limit of {MAX_FILE_SIZE / (1024 * 1024):.2f} MB")
+
     logger.info(f"Received file: {file}")
 
     if not file.filename.lower().endswith('.pdf'):

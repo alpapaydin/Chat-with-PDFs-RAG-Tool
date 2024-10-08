@@ -162,6 +162,35 @@ This will run all tests in the `tests/` directory.
 - For API key related issues, double-check that your `.env` file contains the correct Google API key.
 - If you face import errors, verify that all dependencies are correctly installed and that you're running the application from the correct directory.
 
+## Technical Considerations
+
+### Retrieval-Augmented Generation (RAG) vs. Large Context Models
+
+This project implements a Retrieval-Augmented Generation (RAG) approach using LlamaIndex, rather than relying solely on large context models like Gemini 1.5 Flash. RAG offers several advantages:
+
+1. Efficient retrieval of relevant information from large document sets.
+2. Ability to handle multiple documents in a single chat session.
+3. Improved accuracy by focusing on relevant context.
+4. More scalable solution for growing document bases.
+
+While large context models like Gemini 1.5 Flash offer impressive capabilities, the RAG approach provides a more flexible and scalable solution for our use case.
+
+### Handling Large Outputs
+
+To address the limitation of output tokens (typically 8196 for many models), this project implements a streaming response mechanism. The `stream_long_response` function in `llm_service.py` chunks large responses into manageable pieces, allowing for the delivery of responses that exceed typical token limits.
+
+### Evaluating LLM Performance
+
+While the current test suite focuses on functional testing of the API, evaluating the performance of the Large Language Model requires additional considerations:
+
+1. Implement benchmark datasets specific to your use case.
+2. Use metrics such as perplexity, BLEU score, or domain-specific accuracy measures.
+3. Conduct human evaluation for qualitative assessment of responses.
+4. Implement A/B testing to compare different models or configurations.
+5. Monitor response times and resource usage in production.
+
+Future improvements to the project could include implementing these evaluation methods to ensure ongoing LLM performance optimization.
+
 ## License
 
 This project is licensed under the MIT License - see the LICENSE.md file for details.

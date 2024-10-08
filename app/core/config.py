@@ -8,6 +8,7 @@ class AppSettings(BaseSettings):
     PROJECT_NAME: str = "PDF Chat API"
     PROJECT_VERSION: str = "1.0.0"
     GOOGLE_API_KEY: str
+    FILE_SIZE_MB: int = 1
 
     class Config:
         env_file = ".env"
