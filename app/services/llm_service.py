@@ -5,7 +5,7 @@ from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.llms import ChatMessage, MessageRole
 from app.db.database import get_db
 from app.db.models import Message
-from app.core.config import settings
+from app.core.config import get_settings
 from typing import List
 
 class CombinedRetriever:
@@ -19,7 +19,7 @@ class CombinedRetriever:
 
 def get_chat_history(chat_id: str) -> List[ChatMessage]:
     db = next(get_db())
-    chat_history = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.timestamp).limit(settings.CONTEXT_LENGTH).all()
+    chat_history = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.timestamp).limit(get_settings().CONTEXT_LENGTH).all()
     chat_history.reverse()
     db.close()
     return [

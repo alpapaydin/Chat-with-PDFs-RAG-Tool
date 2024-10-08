@@ -2,18 +2,18 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from app.api.endpoints import pdf, chat, auth
-from app.core.config import settings
+from app.core.config import get_settings
 from app.core.logging import setup_logging
-from app.db.database import engine
+from app.db.database import get_engine
 from app.db.models import Base
 import os
 
-app = FastAPI(title=settings.PROJECT_NAME, version=settings.PROJECT_VERSION)
+app = FastAPI(title=get_settings().PROJECT_NAME, version=get_settings().PROJECT_VERSION)
 
 setup_logging()
 
 # Create database tables
-Base.metadata.create_all(bind=engine)
+Base.metadata.create_all(bind=get_engine())
 
 # Mount static files
 static_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static")

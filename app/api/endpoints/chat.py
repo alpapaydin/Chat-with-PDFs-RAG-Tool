@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import StreamingResponse
 from app.api.models.schemas import ChatRequest, ChatInfo, PDFInfo, MessageInfo
+from sqlalchemy.orm import Session
 from app.services.llm_service import chat_with_llm, stream_long_response
 from app.core.logging import logger
 from app.db.database import get_db
@@ -22,20 +23,21 @@ async def get_chats(current_user: User = Depends(get_current_user)):
     return [ChatInfo(id=chat.id) for chat in chats]
 
 @router.get("/chat/{chat_id}/pdfs", response_model=List[PDFInfo])
-async def get_chat_pdfs(chat_id: str, current_user: User = Depends(get_current_user)):
-    db = next(get_db())
+async def get_chat_pdfs(
+    chat_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     chat = db.query(Chat).filter(Chat.id == chat_id).first()
     if not chat:
-        db.close()
         raise HTTPException(status_code=404, detail="Chat not found")
-    if current_user and chat.user_id != current_user.id:
-        db.close()
-        raise HTTPException(status_code=403, detail="Not authorized to access this chat")
-    if not current_user and chat.user_id is not None:
-        db.close()
-        raise HTTPException(status_code=403, detail="This chat belongs to an authenticated user")
+    # If the chat belongs to a user, ensure the current user is authorized
+    if chat.user_id is not None:
+        if not current_user:
+            raise HTTPException(status_code=401, detail="Authentication required")
+        if chat.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this chat")
     pdfs = chat.pdfs
-    db.close()
     return [PDFInfo(id=pdf.id, filename=pdf.filename) for pdf in pdfs]
 
 @router.get("/chat/{chat_id}/messages", response_model=List[MessageInfo])
