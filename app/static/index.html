@@ -9,17 +9,31 @@
 <body>
     <div class="container">
         <h1>SevenApps Case Study - PDF Chatter</h1>
+        <div id="existing-chats">
+            <h2>Existing Chats</h2>
+            <ul id="chat-list"></ul>
+        </div>
         <div id="pdf-upload">
-            <h2>Upload PDF to start a new chat</h2>
-            <input type="file" id="pdf-file" accept=".pdf">
-            <button onclick="uploadPDF()">Upload</button>
+            <h2>Upload PDFs to start a new chat</h2>
+            <input type="file" id="pdf-files" accept=".pdf" multiple>
+            <button onclick="uploadPDFs()">Upload</button>
         </div>
         <div id="chat-interface" style="display: none;">
             <h2>Chat</h2>
+            <div id="chat-info">
+                <h3>Current Chat: <span id="current-chat-id"></span></h3>
+                <h4>PDFs in this chat:</h4>
+                <ul id="chat-pdfs"></ul>
+            </div>
             <div id="chat-messages"></div>
             <div id="chat-input">
                 <input type="text" id="user-message" placeholder="Type your message...">
                 <button onclick="sendMessage()">Send</button>
+            </div>
+            <div id="add-pdf-to-chat">
+                <h3>Add PDF to current chat</h3>
+                <input type="file" id="additional-pdf" accept=".pdf">
+                <button onclick="addPDFToChat()">Add PDF</button>
             </div>
         </div>
     </div>

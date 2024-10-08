@@ -1,30 +1,44 @@
 import uuid
 import pickle
+import hashlib
 from fastapi import UploadFile, HTTPException
 from llama_index.core import SimpleDirectoryReader, VectorStoreIndex
 from llama_index.core.vector_stores import SimpleVectorStore
 from llama_index.core.storage.storage_context import StorageContext
-from llama_index.embeddings.langchain import LangchainEmbedding
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from app.db.database import get_db
-from app.db.models import PDF
-from app.core.config import settings
+from app.db.models import PDF, Chat
 import PyPDF2
 import os
 
-# Initialize Google embeddings
-google_embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=settings.GOOGLE_API_KEY)
-embed_model = LangchainEmbedding(google_embeddings)
+async def process_pdf(file: UploadFile, chat_id: str = None):
+    content = await file.read()
+    file_hash = hashlib.md5(content).hexdigest()
 
-async def process_pdf(file: UploadFile):
-    # Save the uploaded file temporarily
+    db = next(get_db())
+
+    # Check if this file has already been uploaded
+    existing_pdf = db.query(PDF).filter(PDF.file_hash == file_hash).first()
+    if existing_pdf:
+        if chat_id and existing_pdf.chat_id == chat_id:
+            raise HTTPException(status_code=400, detail="This PDF has already been added to this chat")
+        elif chat_id:
+            # If the PDF exists but in a different chat, we'll add it to this chat
+            existing_pdf.chat_id = chat_id
+            db.commit()
+            return existing_pdf.id, chat_id
+        else:
+            # If no chat_id provided, we'll create a new chat for this existing PDF
+            new_chat = Chat(id=str(uuid.uuid4()))
+            db.add(new_chat)
+            existing_pdf.chat_id = new_chat.id
+            db.commit()
+            return existing_pdf.id, new_chat.id
+
+    # If the file doesn't exist, process it
     temp_file_path = f"/tmp/{file.filename}"
     try:
         with open(temp_file_path, "wb") as temp_file:
-            # Read and write the file in chunks
-            chunk_size = 1024 * 1024  # 1 MB chunks
-            while chunk := await file.read(chunk_size):
-                temp_file.write(chunk)
+            temp_file.write(content)
         
         # Validate PDF
         with open(temp_file_path, "rb") as pdf_file:
@@ -32,6 +46,7 @@ async def process_pdf(file: UploadFile):
                 PyPDF2.PdfReader(pdf_file)
             except PyPDF2.errors.PdfReadError:
                 raise ValueError("Invalid PDF file")
+
         # Use LlamaIndex to load and process the PDF
         documents = SimpleDirectoryReader(input_files=[temp_file_path]).load_data()
         
@@ -41,9 +56,8 @@ async def process_pdf(file: UploadFile):
         
         # Create an index from the documents
         index = VectorStoreIndex.from_documents(
-            documents, 
+            documents,
             storage_context=storage_context,
-            embed_model=embed_model,
         )
         
         # Generate a unique ID for this PDF
@@ -51,15 +65,17 @@ async def process_pdf(file: UploadFile):
         
         # Serialize the entire index
         serialized_index = pickle.dumps(index)
-        
+        if not chat_id:
+            new_chat = Chat(id=str(uuid.uuid4()))
+            db.add(new_chat)
+            chat_id = new_chat.id
+
         # Store in the database
-        db = next(get_db())
-        db_pdf = PDF(id=pdf_id, filename=file.filename, vector_store=serialized_index)
+        db_pdf = PDF(id=pdf_id, filename=file.filename, vector_store=serialized_index, chat_id=chat_id, file_hash=file_hash)
         db.add(db_pdf)
         db.commit()
         db.refresh(db_pdf)
-        
-        return pdf_id
+        return pdf_id, chat_id
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
@@ -69,12 +85,13 @@ async def process_pdf(file: UploadFile):
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)
 
-def get_pdf_index(pdf_id: str):
+def get_chat_indices(chat_id: str):
     db = next(get_db())
-    db_pdf = db.query(PDF).filter(PDF.id == pdf_id).first()
-    if db_pdf is None:
-        raise KeyError("PDF not found")
-    # Deserialize the index
-    index = pickle.loads(db_pdf.vector_store)
-    index.embed_model = embed_model
-    return index
+    pdfs = db.query(PDF).filter(PDF.chat_id == chat_id).all()
+    if not pdfs:
+        raise KeyError("No PDFs found for this chat")
+    indices = []
+    for pdf in pdfs:
+        index = pickle.loads(pdf.vector_store)
+        indices.append(index)
+    return indices

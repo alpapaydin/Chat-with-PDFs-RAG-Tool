@@ -1,38 +1,29 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from app.services.pdf_processor import get_pdf_index
+from app.services.pdf_processor import get_chat_indices
+from llama_index.core.retrievers import VectorIndexRetriever
+from llama_index.core.query_engine import RetrieverQueryEngine
 
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash",
-    temperature=0,
-    max_output_tokens=4096,
-    top_p=1,
-    top_k=1,
-)
+class CombinedRetriever:
+    def __init__(self, retrievers):
+        self.retrievers = retrievers
+    def retrieve(self, query):
+        results = []
+        for retriever in self.retrievers:
+            results.extend(retriever.retrieve(query))
+        return results
 
-async def chat_with_llm(pdf_id: str, user_message: str) -> str:
-    # Get the index for the specified PDF
-    index = get_pdf_index(pdf_id)
-    retriever = index.as_retriever(similarity_top_k=3)
-    # Retrieve relevant documents
-    retrieved_docs = retriever.retrieve(user_message)
-    # Prepare the context from retrieved documents
-    context = "\n\n".join([doc.get_content() for doc in retrieved_docs])
-    # Prepare the prompt for the LLM
-    prompt = f"""Based on the following context, please answer the question. If the answer is not in the context, say "I don't have enough information to answer this question."
-
-Context:
-{context}
-
-Question: {user_message}
-
-Answer:"""
-
-    # Get the response from the LLM
-    response = llm.invoke(prompt)
+async def chat_with_llm(chat_id: str, user_message: str) -> str:
+    indices = get_chat_indices(chat_id)
+    # Combine retrievers from all indices 
+    retrievers = [VectorIndexRetriever(index=index) for index in indices]
+    combined_retriever = CombinedRetriever(retrievers)
+    # Create a query engine with the combined retriever
+    query_engine = RetrieverQueryEngine(retriever=combined_retriever)
+    # Run the query
+    response = query_engine.query(user_message)
     # Prepare the full response
-    full_response = f"Answer: {response.content}\n\nSources:\n"
-    for i, doc in enumerate(retrieved_docs, 1):
-        full_response += f"{i}. {doc.get_content()[:100]}...\n"
+    full_response = f"Answer: {response.response}\n\nSources:\n"
+    for i, node in enumerate(response.source_nodes, 1):
+        full_response += f"{i}. {node.node.get_content()[:100]}...\n"
     return full_response
 
 async def stream_long_response(full_response: str):
