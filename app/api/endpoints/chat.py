@@ -34,10 +34,12 @@ async def get_chats():
 @router.get("/chat/{chat_id}/pdfs", response_model=List[PDFInfo])
 async def get_chat_pdfs(chat_id: str):
     db = next(get_db())
-    pdfs = db.query(PDF).filter(PDF.chat_id == chat_id).all()
-    db.close()
-    if not pdfs:
+    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if not chat or not chat.pdfs:
+        db.close()
         raise HTTPException(status_code=404, detail="No PDFs found for this chat")
+    pdfs = chat.pdfs
+    db.close()
     return [PDFInfo(id=pdf.id, filename=pdf.filename) for pdf in pdfs]
 
 @router.get("/chat/{chat_id}/messages", response_model=List[MessageInfo])

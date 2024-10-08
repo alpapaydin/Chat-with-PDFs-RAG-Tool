@@ -21,7 +21,7 @@ async def upload_pdfs(
     if len(file_size) > MAX_FILE_SIZE:
         raise HTTPException(status_code=413, detail=f"File size exceeds the limit of {MAX_FILE_SIZE / (1024 * 1024):.2f} MB")
 
-    logger.info(f"Received file: {file}")
+    logger.info(f"Received file: {file.filename}")
 
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")

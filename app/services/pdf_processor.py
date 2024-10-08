@@ -19,22 +19,24 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
     # Check if this file has already been uploaded
     existing_pdf = db.query(PDF).filter(PDF.file_hash == file_hash).first()
     if existing_pdf:
-        if chat_id and existing_pdf.chat_id == chat_id:
-            raise HTTPException(status_code=400, detail="This PDF has already been added to this chat")
-        elif chat_id:
-            # If the PDF exists but in a different chat, we'll add it to this chat
-            existing_pdf.chat_id = chat_id
+        if chat_id:
+            chat = db.query(Chat).filter(Chat.id == chat_id).first()
+            if not chat:
+                chat = Chat(id=chat_id)
+                db.add(chat)
+            if existing_pdf not in chat.pdfs:
+                chat.pdfs.append(existing_pdf)
             db.commit()
-            db.close()
-            return existing_pdf.id, chat_id
         else:
             # If no chat_id provided, we'll create a new chat for this existing PDF
             new_chat = Chat(id=str(uuid.uuid4()))
             db.add(new_chat)
-            existing_pdf.chat_id = new_chat.id
+            new_chat.pdfs.append(existing_pdf)
             db.commit()
-            db.close()
-            return existing_pdf.id, new_chat.id
+            chat_id = new_chat.id
+        pdf_id = existing_pdf.id
+        db.close()
+        return pdf_id, chat_id
 
     # If the file doesn't exist, process it
     temp_file_path = f"/tmp/{file.filename}"
@@ -67,16 +69,24 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
         
         # Serialize the entire index
         serialized_index = pickle.dumps(index)
-        if not chat_id:
+        
+        # Create a new PDF instance
+        new_pdf = PDF(id=pdf_id, filename=file.filename, vector_store=serialized_index, file_hash=file_hash)
+        db.add(new_pdf)
+
+        if chat_id:
+            chat = db.query(Chat).filter(Chat.id == chat_id).first()
+            if not chat:
+                chat = Chat(id=chat_id)
+                db.add(chat)
+            chat.pdfs.append(new_pdf)
+        else:
             new_chat = Chat(id=str(uuid.uuid4()))
             db.add(new_chat)
+            new_chat.pdfs.append(new_pdf)
             chat_id = new_chat.id
 
-        # Store in the database
-        db_pdf = PDF(id=pdf_id, filename=file.filename, vector_store=serialized_index, chat_id=chat_id, file_hash=file_hash)
-        db.add(db_pdf)
         db.commit()
-        db.refresh(db_pdf)
         return pdf_id, chat_id
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))
@@ -90,11 +100,12 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
 
 def get_chat_indices(chat_id: str):
     db = next(get_db())
-    pdfs = db.query(PDF).filter(PDF.chat_id == chat_id).all()
-    if not pdfs:
+    chat = db.query(Chat).filter(Chat.id == chat_id).first()
+    if not chat or not chat.pdfs:
         raise KeyError("No PDFs found for this chat")
     indices = []
-    for pdf in pdfs:
+    for pdf in chat.pdfs:
         index = pickle.loads(pdf.vector_store)
         indices.append(index)
+    db.close()
     return indices
