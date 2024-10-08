@@ -10,16 +10,6 @@
     <div class="container">
         <h1>SevenApps Case Study - PDF Chatter</h1>
     
-        <div id="auth-section">
-            <h2>Login or Register (Optional)</h2>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
-            <button id="login-button">Login</button>
-            <button id="register-button">Register</button>
-            <button id="logout-button" style="display: none;">Logout</button>
-            <p id="auth-message"></p>
-        </div>
-    
         <div id="existing-chats">
             <h2>Existing Chats</h2>
             <ul id="chat-list"></ul>
@@ -28,11 +18,11 @@
         <div id="pdf-upload">
             <h2>Upload PDFs to start a new chat</h2>
             <input type="file" id="pdf-files" multiple accept=".pdf">
-            <button id="upload-button" onclick="uploadPDFs()">Upload</button>
+            <button id="upload-button"">Upload</button>
         </div>
     
         <div id="chat-interface" style="display: none;">
-            <h2>Chat</h2>
+            <h2>Current Chat</h2>
             <div id="chat-info">
                 <h3>Current Chat: <span id="current-chat-id"></span></h3>
                 <h4>PDFs in this chat:</h4>
@@ -48,6 +38,16 @@
                 <input type="file" id="additional-pdf" accept=".pdf">
                 <button id="add-pdf-button" onclick="addPDFToChat()">Add PDF</button>
             </div>
+        </div>
+
+        <div id="auth-section">
+            <h2>Login / Register</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-button">Login</button>
+            <button id="register-button">Register</button>
+            <button id="logout-button" style="display: none;">Logout</button>
+            <p id="auth-message"></p>
         </div>
     </div>
     <script src="/static/script.js"></script>

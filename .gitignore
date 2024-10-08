@@ -40,3 +40,5 @@ coverage.xml
 ehthumbs.db
 Thumbs.db
 app.db
+TEST.db
+*.db

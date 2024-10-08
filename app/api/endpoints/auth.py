@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.db.database import get_db
 from app.db.models import User
-from app.auth.auth import authenticate_user, create_access_token, get_password_hash
+from app.auth.auth import authenticate_user, create_access_token, get_password_hash, get_current_user
 from pydantic import BaseModel, Field
 
 router = APIRouter()
@@ -35,3 +35,7 @@ async def register_user(user: UserCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_user)
     return {"message": "User created successfully"}
+
+@router.get("/me")
+async def read_users_me(current_user: User = Depends(get_current_user)):
+    return {"username": current_user.username}

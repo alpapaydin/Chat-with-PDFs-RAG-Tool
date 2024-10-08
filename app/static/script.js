@@ -1,6 +1,40 @@
 let currentChatId = null;
 let authToken = null;
 
+window.onload = function() {
+    checkSession();
+    document.getElementById('login-button').addEventListener('click', login);
+    document.getElementById('register-button').addEventListener('click', register);
+    document.getElementById('logout-button').addEventListener('click', logout);
+    document.getElementById('upload-button').addEventListener('click', uploadPDFs);
+    document.getElementById('start-new-chat-button').addEventListener('click', startNewChat);
+};
+
+async function checkSession() {
+    authToken = localStorage.getItem('authToken');
+    if (authToken) {
+        try {
+            const response = await fetch('/v1/auth/me', {
+                headers: {
+                    'Authorization': `Bearer ${authToken}`
+                }
+            });
+            if (response.ok) {
+                const userData = await response.json();
+                updateUIForLoggedInUser(userData.username);
+            } else {
+                updateUIForLoggedOutUser();
+            }
+        } catch (error) {
+            console.error('Error checking session:', error);
+            updateUIForLoggedOutUser();
+        }
+    } else {
+        updateUIForLoggedOutUser();
+    }
+    await loadExistingChats();
+}
+
 async function login() {
     const username = document.getElementById('username').value;
     const password = document.getElementById('password').value;
@@ -25,16 +59,9 @@ async function login() {
 
         const data = await response.json();
         authToken = data.access_token;
-        authMessage.textContent = 'Logged in successfully';
-        authMessage.style.color = 'green';
+        localStorage.setItem('authToken', authToken);
         
-        // Update UI for logged-in state
-        document.getElementById('login-button').style.display = 'none';
-        document.getElementById('register-button').style.display = 'none';
-        document.getElementById('username').style.display = 'none';
-        document.getElementById('password').style.display = 'none';
-        
-        // Reload chats for the authenticated user
+        updateUIForLoggedInUser(username);
         await loadExistingChats();
     } catch (error) {
         console.error('Login error:', error);
@@ -44,18 +71,56 @@ async function login() {
 }
 
 function logout() {
+    localStorage.removeItem('authToken');
     authToken = null;
     currentChatId = null;
+    updateUIForLoggedOutUser();
+    loadExistingChats();
+}
+
+function updateUIForLoggedInUser(username) {
+    document.getElementById('auth-message').textContent = `Logged in as ${username}`;
+    document.getElementById('auth-message').style.color = 'green';
+    document.getElementById('login-button').style.display = 'none';
+    document.getElementById('register-button').style.display = 'none';
+    document.getElementById('username').style.display = 'none';
+    document.getElementById('password').style.display = 'none';
+    document.getElementById('logout-button').style.display = 'inline-block';
+    document.getElementById('pdf-upload').style.display = 'block';
+    document.getElementById('existing-chats').style.display = 'block';
+    document.getElementById('chat-interface').style.display = 'none';
+}
+
+function updateUIForLoggedOutUser() {
     document.getElementById('auth-message').textContent = '';
     document.getElementById('login-button').style.display = 'inline-block';
     document.getElementById('register-button').style.display = 'inline-block';
     document.getElementById('username').style.display = 'inline-block';
     document.getElementById('password').style.display = 'inline-block';
     document.getElementById('logout-button').style.display = 'none';
-    document.getElementById('chat-interface').style.display = 'none';
     document.getElementById('pdf-upload').style.display = 'block';
-    loadExistingChats();
+    document.getElementById('existing-chats').style.display = 'block';
+    document.getElementById('chat-interface').style.display = 'none';
 }
+
+async function loadExistingChats() {
+    try {
+        const headers = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        const response = await fetch('/v1/chats', { headers });
+        const chats = await response.json();
+        const chatList = document.getElementById('chat-list');
+        chatList.innerHTML = '';
+        chats.forEach(chat => {
+            const li = document.createElement('li');
+            li.textContent = `Chat ${chat.id}`;
+            li.onclick = () => loadChat(chat.id);
+            chatList.appendChild(li);
+        });
+    } catch (error) {
+        console.error('Error loading chats:', error);
+    }
+}
+
 
 async function register() {
     const username = document.getElementById('username').value;
@@ -92,24 +157,6 @@ async function register() {
     }
 }
 
-async function loadExistingChats() {
-    try {
-        const headers = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
-        const response = await fetch('/v1/chats', { headers });
-        const chats = await response.json();
-        const chatList = document.getElementById('chat-list');
-        chatList.innerHTML = '';
-        chats.forEach(chat => {
-            const li = document.createElement('li');
-            li.textContent = `Chat ${chat.id}`;
-            li.onclick = () => loadChat(chat.id);
-            chatList.appendChild(li);
-        });
-    } catch (error) {
-        console.error('Error loading chats:', error);
-    }
-}
-
 async function uploadPDFs() {
     const uploadButton = document.getElementById('upload-button');
     uploadButton.disabled = true;
@@ -134,9 +181,11 @@ async function uploadPDFs() {
     }
 
     if (successfulUploads > 0) {
-        document.getElementById('pdf-upload').style.display = 'none';
+        //document.getElementById('pdf-upload').style.display = 'none';
         document.getElementById('chat-interface').style.display = 'block';
+        document.getElementById('chat-messages').innerHTML = '';
         document.getElementById('current-chat-id').textContent = currentChatId;
+        fileInput.value = null
         loadChatPDFs(currentChatId);
         addMessage('System', `${successfulUploads} PDF(s) uploaded successfully. You can now ask questions about them.`);
     } else {
@@ -176,7 +225,7 @@ async function uploadSinglePDF(file, existingChatId = null) {
 
 async function loadChat(chatId) {
     currentChatId = chatId;
-    document.getElementById('pdf-upload').style.display = 'none';
+    //document.getElementById('pdf-upload').style.display = 'none';
     document.getElementById('chat-interface').style.display = 'block';
     document.getElementById('current-chat-id').textContent = currentChatId;
     document.getElementById('chat-messages').innerHTML = '';
@@ -233,6 +282,7 @@ async function addPDFToChat() {
         await uploadSinglePDF(file, currentChatId);
         await loadChatPDFs(currentChatId);
         addMessage('System', 'Additional PDF uploaded successfully.');
+        fileInput.value = null
     } catch (error) {
         console.error('Error:', error);
         alert('An error occurred while uploading the additional PDF: ' + error.message);
@@ -319,10 +369,3 @@ function formatMessage(message) {
     }
     return formattedMessage;
 }
-
-window.onload = function() {
-    loadExistingChats();
-    document.getElementById('login-button').addEventListener('click', login);
-    document.getElementById('register-button').addEventListener('click', register);
-    document.getElementById('logout-button').addEventListener('click', logout);
-};
