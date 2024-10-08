@@ -1,8 +1,8 @@
-from fastapi import Depends, HTTPException, status
+import jwt
+from fastapi import Depends
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from app.db.database import get_db
 from app.db.models import User
 from app.core.config import get_settings
@@ -12,7 +12,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=get_settings().ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, get_settings().SECRET_KEY, algorithm=get_settings().ALGORITHM)
     return encoded_jwt
@@ -40,7 +40,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             return None
-    except JWTError:
+    except jwt.PyJWTError:
         return None
     db = next(get_db())
     user = get_user(db, username=username)
