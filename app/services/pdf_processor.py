@@ -10,19 +10,17 @@ from app.db.models import PDF, Chat
 import PyPDF2
 import os
 
-async def process_pdf(file: UploadFile, chat_id: str = None):
+async def process_pdf(file: UploadFile, chat_id: str = None, current_user=None):
     content = await file.read()
     file_hash = hashlib.md5(content).hexdigest()
-
     db = next(get_db())
-    
     # Check if this file has already been uploaded
     existing_pdf = db.query(PDF).filter(PDF.file_hash == file_hash).first()
     if existing_pdf:
         if chat_id:
             chat = db.query(Chat).filter(Chat.id == chat_id).first()
             if not chat:
-                chat = Chat(id=chat_id)
+                chat = Chat(id=chat_id, user_id=current_user.id if current_user else None)
                 db.add(chat)
             if existing_pdf not in chat.pdfs:
                 chat.pdfs.append(existing_pdf)
@@ -31,7 +29,7 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
             db.commit()
         else:
             # If no chat_id provided, we'll create a new chat for this existing PDF
-            new_chat = Chat(id=str(uuid.uuid4()))
+            new_chat = Chat(id=str(uuid.uuid4()), user_id=current_user.id if current_user else None)
             db.add(new_chat)
             new_chat.pdfs.append(existing_pdf)
             db.commit()

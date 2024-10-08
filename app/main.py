@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from app.api.endpoints import pdf, chat
+from app.api.endpoints import pdf, chat, auth
 from app.core.config import settings
 from app.core.logging import setup_logging
 from app.db.database import engine
@@ -22,6 +22,7 @@ app.mount("/static", StaticFiles(directory=static_dir), name="static")
 # API routes
 app.include_router(pdf.router, prefix="/v1", tags=["pdf"])
 app.include_router(chat.router, prefix="/v1", tags=["chat"])
+app.include_router(auth.router, prefix="/v1/auth", tags=["auth"])
 
 @app.get("/")
 async def read_root():

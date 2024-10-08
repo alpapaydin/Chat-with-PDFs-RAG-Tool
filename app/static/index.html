@@ -9,15 +9,28 @@
 <body>
     <div class="container">
         <h1>SevenApps Case Study - PDF Chatter</h1>
+    
+        <div id="auth-section">
+            <h2>Login or Register (Optional)</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button id="login-button">Login</button>
+            <button id="register-button">Register</button>
+            <button id="logout-button" style="display: none;">Logout</button>
+            <p id="auth-message"></p>
+        </div>
+    
         <div id="existing-chats">
             <h2>Existing Chats</h2>
             <ul id="chat-list"></ul>
         </div>
+    
         <div id="pdf-upload">
             <h2>Upload PDFs to start a new chat</h2>
-            <input type="file" id="pdf-files" accept=".pdf" multiple>
+            <input type="file" id="pdf-files" multiple accept=".pdf">
             <button id="upload-button" onclick="uploadPDFs()">Upload</button>
         </div>
+    
         <div id="chat-interface" style="display: none;">
             <h2>Chat</h2>
             <div id="chat-info">

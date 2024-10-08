@@ -1,8 +1,10 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Request, Depends
 from typing import Optional
 from app.services.pdf_processor import process_pdf
 from app.core.logging import logger
 from app.core.config import settings
+from app.auth.auth import get_current_user
+from app.db.models import User
 
 router = APIRouter()
 
@@ -13,7 +15,8 @@ MAX_FILE_SIZE = settings.FILE_SIZE_MB * 1024 * 1024
 async def upload_pdfs(
     request: Request,
     file: UploadFile = File(...),
-    chat_id: Optional[str] = Form(None)
+    chat_id: Optional[str] = Form(None),
+    current_user: Optional[User] = Depends(get_current_user)
 ):
     # Check file size
     file_size = await file.read()
@@ -27,7 +30,7 @@ async def upload_pdfs(
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
 
     try:
-        pdf_id, chat_id = await process_pdf(file, chat_id)
+        pdf_id, chat_id = await process_pdf(file, chat_id, current_user)
         logger.info(f"PDF processed successfully. ID: {pdf_id}, Chat ID: {chat_id}")
         return {"pdf_id": pdf_id, "chat_id": chat_id}
     except HTTPException as he:

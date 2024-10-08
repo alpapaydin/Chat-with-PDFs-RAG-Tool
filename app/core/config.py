@@ -11,6 +11,9 @@ class AppSettings(BaseSettings):
     SQLALCHEMY_DATABASE_URL: str
     FILE_SIZE_MB: int = 3  # Maximum allowed file uploads in MB
     CONTEXT_LENGTH: int = 5  # Last n messages to append to context
+    SECRET_KEY: str = "top-secret-key"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
     class Config:
         env_file = ".env"  # Specify the .env file

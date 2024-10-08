@@ -1,8 +1,101 @@
 let currentChatId = null;
+let authToken = null;
+
+async function login() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const authMessage = document.getElementById('auth-message');
+
+    try {
+        const response = await fetch('/v1/auth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: new URLSearchParams({
+                'username': username,
+                'password': password,
+            })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.detail || 'Login failed');
+        }
+
+        const data = await response.json();
+        authToken = data.access_token;
+        authMessage.textContent = 'Logged in successfully';
+        authMessage.style.color = 'green';
+        
+        // Update UI for logged-in state
+        document.getElementById('login-button').style.display = 'none';
+        document.getElementById('register-button').style.display = 'none';
+        document.getElementById('username').style.display = 'none';
+        document.getElementById('password').style.display = 'none';
+        
+        // Reload chats for the authenticated user
+        await loadExistingChats();
+    } catch (error) {
+        console.error('Login error:', error);
+        authMessage.textContent = 'Login failed: ' + error.message;
+        authMessage.style.color = 'red';
+    }
+}
+
+function logout() {
+    authToken = null;
+    currentChatId = null;
+    document.getElementById('auth-message').textContent = '';
+    document.getElementById('login-button').style.display = 'inline-block';
+    document.getElementById('register-button').style.display = 'inline-block';
+    document.getElementById('username').style.display = 'inline-block';
+    document.getElementById('password').style.display = 'inline-block';
+    document.getElementById('logout-button').style.display = 'none';
+    document.getElementById('chat-interface').style.display = 'none';
+    document.getElementById('pdf-upload').style.display = 'block';
+    loadExistingChats();
+}
+
+async function register() {
+    const username = document.getElementById('username').value;
+    const password = document.getElementById('password').value;
+    const authMessage = document.getElementById('auth-message');
+
+    try {
+        const response = await fetch('/v1/auth/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, password }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            if (errorData.detail && Array.isArray(errorData.detail)) {
+                // Handle validation errors
+                const errorMessages = errorData.detail.map(error => `${error.loc.join('.')} : ${error.msg}`);
+                throw new Error(errorMessages.join('\n'));
+            } else {
+                throw new Error(errorData.detail || 'Registration failed');
+            }
+        }
+
+        const data = await response.json();
+        authMessage.textContent = 'Registered successfully. Please log in.';
+        authMessage.style.color = 'green';
+    } catch (error) {
+        console.error('Registration error:', error);
+        authMessage.textContent = 'Registration failed: ' + error.message;
+        authMessage.style.color = 'red';
+    }
+}
 
 async function loadExistingChats() {
     try {
-        const response = await fetch('/v1/chats');
+        const headers = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        const response = await fetch('/v1/chats', { headers });
         const chats = await response.json();
         const chatList = document.getElementById('chat-list');
         chatList.innerHTML = '';
@@ -60,8 +153,14 @@ async function uploadSinglePDF(file, existingChatId = null) {
         formData.append('chat_id', existingChatId);
     }
 
+    const headers = {};
+    if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
     const response = await fetch('/v1/pdf', {
         method: 'POST',
+        headers: headers,
         body: formData
     });
 
@@ -88,7 +187,8 @@ async function loadChat(chatId) {
 
 async function loadChatHistory(chatId) {
     try {
-        const response = await fetch(`/v1/chat/${chatId}/messages`);
+        const headers = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        const response = await fetch(`/v1/chat/${chatId}/messages`, { headers });
         const messages = await response.json();
         const chatMessages = document.getElementById('chat-messages');
         chatMessages.innerHTML = '';
@@ -102,7 +202,8 @@ async function loadChatHistory(chatId) {
 
 async function loadChatPDFs(chatId) {
     try {
-        const response = await fetch(`/v1/chat/${chatId}/pdfs`);
+        const headers = authToken ? { 'Authorization': `Bearer ${authToken}` } : {};
+        const response = await fetch(`/v1/chat/${chatId}/pdfs`, { headers });
         const pdfs = await response.json();
         const pdfList = document.getElementById('chat-pdfs');
         pdfList.innerHTML = '';
@@ -152,11 +253,16 @@ async function sendMessage() {
     userMessageInput.value = '';
 
     try {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (authToken) {
+            headers['Authorization'] = `Bearer ${authToken}`;
+        }
+        
         const response = await fetch(`/v1/chat/${currentChatId}`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify({ message: userMessage })
         });
 
@@ -214,5 +320,9 @@ function formatMessage(message) {
     return formattedMessage;
 }
 
-// Load existing chats when the page loads
-window.onload = loadExistingChats;
+window.onload = function() {
+    loadExistingChats();
+    document.getElementById('login-button').addEventListener('click', login);
+    document.getElementById('register-button').addEventListener('click', register);
+    document.getElementById('logout-button').addEventListener('click', logout);
+};

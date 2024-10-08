@@ -17,7 +17,7 @@ h1, h2 {
     color: #333;
 }
 
-input[type="file"], input[type="text"] {
+input[type="file"], input[type="text"], input[type="password"] {
     width: 70%;
     padding: 10px;
     margin-bottom: 10px;
@@ -30,6 +30,7 @@ button {
     padding: 10px 20px;
     border: none;
     cursor: pointer;
+    margin-right: 10px;
 }
 
 button:hover {
@@ -67,4 +68,17 @@ button:hover {
 #user-message {
     flex-grow: 1;
     margin-right: 10px;
+}
+
+#auth-section {
+    margin-bottom: 20px;
+    padding: 20px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+#auth-message {
+    margin-top: 10px;
+    font-weight: bold;
 }
