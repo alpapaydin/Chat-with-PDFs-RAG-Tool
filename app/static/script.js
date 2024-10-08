@@ -82,7 +82,22 @@ async function loadChat(chatId) {
     document.getElementById('current-chat-id').textContent = currentChatId;
     document.getElementById('chat-messages').innerHTML = '';
     await loadChatPDFs(currentChatId);
+    await loadChatHistory(currentChatId);
     addMessage('System', 'Chat loaded. You can now ask questions about the PDFs in this chat.');
+}
+
+async function loadChatHistory(chatId) {
+    try {
+        const response = await fetch(`/v1/chat/${chatId}/messages`);
+        const messages = await response.json();
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.innerHTML = '';
+        messages.forEach(msg => {
+            addMessage(msg.is_user ? 'User' : 'Bot', msg.content);
+        });
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
 }
 
 async function loadChatPDFs(chatId) {
