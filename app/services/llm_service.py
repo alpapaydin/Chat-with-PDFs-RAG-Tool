@@ -22,6 +22,7 @@ def get_chat_history(chat_id: str) -> List[ChatMessage]:
     db = next(get_db())
     chat_history = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.timestamp).limit(settings.CONTEXT_LENGTH).all()
     chat_history.reverse()
+    db.close()
     return [
         ChatMessage(
             role=MessageRole.USER if msg.is_user else MessageRole.ASSISTANT,

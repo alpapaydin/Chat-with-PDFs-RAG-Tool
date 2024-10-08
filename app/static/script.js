@@ -49,7 +49,7 @@ async function uploadPDFs() {
     } else {
         alert('No PDFs were successfully uploaded.');
     }
-
+    await loadExistingChats();
     uploadButton.disabled = false;
 }
 

@@ -15,7 +15,7 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
     file_hash = hashlib.md5(content).hexdigest()
 
     db = next(get_db())
-
+    
     # Check if this file has already been uploaded
     existing_pdf = db.query(PDF).filter(PDF.file_hash == file_hash).first()
     if existing_pdf:
@@ -25,6 +25,7 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
             # If the PDF exists but in a different chat, we'll add it to this chat
             existing_pdf.chat_id = chat_id
             db.commit()
+            db.close()
             return existing_pdf.id, chat_id
         else:
             # If no chat_id provided, we'll create a new chat for this existing PDF
@@ -32,6 +33,7 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
             db.add(new_chat)
             existing_pdf.chat_id = new_chat.id
             db.commit()
+            db.close()
             return existing_pdf.id, new_chat.id
 
     # If the file doesn't exist, process it
@@ -81,6 +83,7 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing PDF: {str(e)}")
     finally:
+        db.close()
         # Clean up the temporary file
         if os.path.exists(temp_file_path):
             os.remove(temp_file_path)

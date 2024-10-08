@@ -28,12 +28,14 @@ class MessageInfo(BaseModel):
 async def get_chats():
     db = next(get_db())
     chats = db.query(Chat).all()
+    db.close()
     return [ChatInfo(id=chat.id) for chat in chats]
 
 @router.get("/chat/{chat_id}/pdfs", response_model=List[PDFInfo])
 async def get_chat_pdfs(chat_id: str):
     db = next(get_db())
     pdfs = db.query(PDF).filter(PDF.chat_id == chat_id).all()
+    db.close()
     if not pdfs:
         raise HTTPException(status_code=404, detail="No PDFs found for this chat")
     return [PDFInfo(id=pdf.id, filename=pdf.filename) for pdf in pdfs]
@@ -42,6 +44,7 @@ async def get_chat_pdfs(chat_id: str):
 async def get_chat_messages(chat_id: str):
     db = next(get_db())
     messages = db.query(Message).filter(Message.chat_id == chat_id).order_by(Message.timestamp).all()
+    db.close()
     return [MessageInfo(content=msg.content, is_user=msg.is_user, timestamp=msg.timestamp) for msg in messages]
 
 @router.post("/chat/{chat_id}")
@@ -61,7 +64,7 @@ async def chat_with_pdfs(chat_id: str, chat_request: ChatRequest):
         bot_message = Message(id=str(uuid.uuid4()), chat_id=chat_id, content=full_response, is_user=False)
         db.add(bot_message)
         db.commit()
-
+        db.close()
         return StreamingResponse(stream_long_response(full_response), media_type="text/plain")
     except KeyError:
         raise HTTPException(status_code=404, detail="Chat not found or no PDFs associated with this chat")
