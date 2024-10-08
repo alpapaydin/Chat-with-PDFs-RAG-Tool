@@ -26,6 +26,8 @@ async def process_pdf(file: UploadFile, chat_id: str = None):
                 db.add(chat)
             if existing_pdf not in chat.pdfs:
                 chat.pdfs.append(existing_pdf)
+            else:
+                raise HTTPException(status_code=400, detail="This PDF has already been added to this chat")
             db.commit()
         else:
             # If no chat_id provided, we'll create a new chat for this existing PDF
