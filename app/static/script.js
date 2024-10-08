@@ -172,17 +172,31 @@ function addMessage(sender, message, isUpdate = false) {
     if (isUpdate) {
         const lastMessage = chatMessages.lastElementChild;
         if (lastMessage && lastMessage.classList.contains('bot-message')) {
-            lastMessage.textContent = message;
+            lastMessage.innerHTML = formatMessage(message);
             return;
         }
     }
     
     const messageElement = document.createElement('div');
     messageElement.classList.add('message', sender.toLowerCase() + '-message');
-    messageElement.textContent = message;
+    messageElement.innerHTML = formatMessage(message);
     
     chatMessages.appendChild(messageElement);
     chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function formatMessage(message) {
+    const [answer, sources] = message.split("Sources:");
+    let formattedMessage = `<div>${answer.replace("Answer:", "").trim()}</div>`;
+    if (sources) {
+        const cleanedSources = sources.replace(/\n/g, ' ').replace(/\s\s+/g, ' ').trim();
+        const sourceEntries = cleanedSources.split(/(?=\d\.\s)/);
+        const formattedSources = sourceEntries.map(source => 
+            `<div style="font-size: x-small; margin-top: 4px;">${source.trim()}</div>`
+        ).join('');
+        formattedMessage += formattedSources;
+    }
+    return formattedMessage;
 }
 
 // Load existing chats when the page loads
